@@ -1,9 +1,10 @@
-import React, { useReducer, useCallback, useMemo } from 'react';
+import React, { useReducer, useCallback, useMemo, useEffect } from 'react';
 
 import IngredientForm from './IngredientForm';
 import IngredientList from './IngredientList';
 import ErrorModal from '../UI/ErrorModal';
 import Search from './Search';
+import useHttp from '../../hooks/http';
 
 const ingredientReducer = (currentIngredients, action) => {
   switch (action.type) {
@@ -18,63 +19,43 @@ const ingredientReducer = (currentIngredients, action) => {
   }
 }
 
-const httpReducer = (currentHttpState, action) => {
-  switch (action.type) {
-    case 'SEND':
-      return { loading: true, error: null };
-    case 'RESPONSE':
-      return { ...currentHttpState, loading: false };
-    case 'ERROR':
-      return { loading: false, error: action.errorMessage };
-    case 'CLEAR':
-      return { ...currentHttpState, error: null };
-    default:
-      throw new Error('Should not get there!');
-  }
-}
-
 const Ingredients = () => {
   const [userIngredients, dispatch] = useReducer(ingredientReducer, []);
-  const [httpState, dispatchHttp] = useReducer(httpReducer, { loading: false, error: null });
+  const { loading, data, error, sendRequest, extra, identifier, clear } = useHttp();
+
+  useEffect(() => {
+    if (!loading && !error && identifier === 'REMOVE_INGREDIENT') {
+      dispatch({ type: 'DELETE', ingredientId: extra });
+    } else if (!loading && !error && identifier === 'ADD_INGREDIENT') {
+      dispatch({ type: 'ADD', newIngredient: { id: data.name, ...extra } });
+    }
+  }, [data, extra, identifier, loading, error]);
 
   const addIngredientHandler = useCallback(newIngredient => {
-    dispatchHttp({ type: 'SEND' });
-    // axios will automatically convert everything to JSON, but using fetch, we need to convert by ourselves
-    fetch('https://react-hook-practice-c5e6c.firebaseio.com/ingredients.json', {
-      method: 'POST',
-      body: JSON.stringify(newIngredient),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }).then(response => {
-      dispatchHttp({ type: 'RESPONSE' });
-      return response.json();
-    }).then(responseData => {
-      dispatch({ type: 'ADD', newIngredient: { id: responseData.name, ...newIngredient } });
-    });
-  }, []);
+    sendRequest(
+      'https://react-hook-practice-c5e6c.firebaseio.com/ingredients.json',
+      'POST',
+      JSON.stringify(newIngredient),
+      newIngredient,
+      'ADD_INGREDIENT'
+    );
+  }, [sendRequest]);
 
   const removeIngredientHandler = useCallback(ingredientId => {
-    dispatchHttp({ type: 'SEND' });
-    fetch(`https://react-hook-practice-c5e6c.firebaseio.com/ingredients/${ingredientId}.json`, {
-      method: 'DELETE'
-    }).then(response => {
-      dispatchHttp({ type: 'RESPONSE' });
-      dispatch({ type: 'DELETE', ingredientId });
-    }).catch(error => {
-      dispatchHttp({ type: 'ERROR', errorMessage: error.message });
-    });
-  }, []);
+    sendRequest(
+      `https://react-hook-practice-c5e6c.firebaseio.com/ingredients/${ingredientId}.json`,
+      'DELETE',
+      null,
+      ingredientId,
+      'REMOVE_INGREDIENT'
+    );
+  }, [sendRequest]);
 
   // useCallback: cache the function so the function will not be changed / re-created
   // the component that receives this function must be using React.memo, otherwise it will re-render no matter this function is re-created or not
   const filteredIngredientsHandler = useCallback(filteredIngredients => {
     dispatch({ type: 'SET', ingredients: filteredIngredients });
   }, []); //the only dependency is setUserIngredients and it is setState function so no need to list in dependency list
-
-  const cleanError = useCallback(() => {
-    dispatchHttp({ type: 'CLEAR' });
-  }, []);
 
   const ingredientList = useMemo(() => {
     return (
@@ -87,9 +68,9 @@ const Ingredients = () => {
 
   return (
     <div className="App">
-      {httpState.error && <ErrorModal onClose={cleanError}>{httpState.error}</ErrorModal>}
+      {error && <ErrorModal onClose={clear}>{error}</ErrorModal>}
 
-      <IngredientForm addIngredient={addIngredientHandler} loading={httpState.loading} />
+      <IngredientForm addIngredient={addIngredientHandler} loading={loading} />
 
       <section>
         <Search onLoadIngredients={filteredIngredientsHandler} />
