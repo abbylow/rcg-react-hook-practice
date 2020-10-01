@@ -27,7 +27,7 @@ const httpReducer = (currentHttpState, action) => {
     case 'ERROR':
       return { loading: false, error: action.errorMessage };
     case 'CLEAR':
-      return {  ...currentHttpState, error: null };
+      return { ...currentHttpState, error: null };
     default:
       throw new Error('Should not get there!');
   }
@@ -37,7 +37,7 @@ const Ingredients = () => {
   const [userIngredients, dispatch] = useReducer(ingredientReducer, []);
   const [httpState, dispatchHttp] = useReducer(httpReducer, { loading: false, error: null });
 
-  const addIngredientHandler = newIngredient => {
+  const addIngredientHandler = useCallback(newIngredient => {
     dispatchHttp({ type: 'SEND' });
     // axios will automatically convert everything to JSON, but using fetch, we need to convert by ourselves
     fetch('https://react-hook-practice-c5e6c.firebaseio.com/ingredients.json', {
@@ -52,9 +52,9 @@ const Ingredients = () => {
     }).then(responseData => {
       dispatch({ type: 'ADD', newIngredient: { id: responseData.name, ...newIngredient } });
     });
-  }
+  }, []);
 
-  const removeIngredientHandler = ingredientId => {
+  const removeIngredientHandler = useCallback(ingredientId => {
     dispatchHttp({ type: 'SEND' });
     fetch(`https://react-hook-practice-c5e6c.firebaseio.com/ingredients/${ingredientId}.json`, {
       method: 'DELETE'
@@ -64,7 +64,7 @@ const Ingredients = () => {
     }).catch(error => {
       dispatchHttp({ type: 'ERROR', errorMessage: error.message });
     });
-  }
+  }, []);
 
   // useCallback: cache the function so the function will not be changed / re-created
   const filteredIngredientsHandler = useCallback(filteredIngredients => {
