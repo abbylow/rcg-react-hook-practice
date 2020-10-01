@@ -36,10 +36,9 @@ const Ingredients = () => {
       method: 'DELETE'
     }).then(response => {
       setIsLoading(false);
-      setUserIngredients(prevIngredients => {
-        const newIngredients = prevIngredients.filter(ing => ing.id !== ingredientId);
-        setUserIngredients(newIngredients);
-      });
+      setUserIngredients(prevIngredients =>
+        prevIngredients.filter(ing => ing.id !== ingredientId)
+      );
     }).catch(error => {
       setError(error.message);
       setIsLoading(false);
