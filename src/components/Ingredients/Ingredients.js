@@ -1,13 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 
 import IngredientForm from './IngredientForm';
 import IngredientList from './IngredientList';
+import ErrorModal from '../UI/ErrorModal';
 import Search from './Search';
 
 const Ingredients = () => {
   const [userIngredients, setUserIngredients] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState();
 
   const addIngredientHandler = newIngredient => {
+    setIsLoading(true);
     // axios will automatically convert everything to JSON, but using fetch, we need to convert by ourselves
     fetch('https://react-hook-practice-c5e6c.firebaseio.com/ingredients.json', {
       method: 'POST',
@@ -16,6 +20,7 @@ const Ingredients = () => {
         'Content-Type': 'application/json'
       }
     }).then(response => {
+      setIsLoading(false);
       return response.json();
     }).then(responseData => {
       setUserIngredients(prevIngredients => [
@@ -26,9 +31,18 @@ const Ingredients = () => {
   }
 
   const removeIngredientHandler = ingredientId => {
-    setUserIngredients(prevIngredients => {
-      const newIngredients = prevIngredients.filter(ing => ing.id !== ingredientId);
-      setUserIngredients(newIngredients);
+    setIsLoading(true);
+    fetch(`https://react-hook-practice-c5e6c.firebaseio.com/ingredients/${ingredientId}.json`, {
+      method: 'DELETE'
+    }).then(response => {
+      setIsLoading(false);
+      setUserIngredients(prevIngredients => {
+        const newIngredients = prevIngredients.filter(ing => ing.id !== ingredientId);
+        setUserIngredients(newIngredients);
+      });
+    }).catch(error => {
+      setError(error.message);
+      setIsLoading(false);
     });
   }
 
@@ -37,9 +51,15 @@ const Ingredients = () => {
     setUserIngredients(filteredIngredients);
   }, []); //the only dependency is setUserIngredients and it is setState function so no need to list in dependency list
 
+  const cleanError = () => {
+    setError(null);
+  }
+
   return (
     <div className="App">
-      <IngredientForm addIngredient={addIngredientHandler} />
+      {error && <ErrorModal onClose={cleanError}>{error}</ErrorModal>}
+
+      <IngredientForm addIngredient={addIngredientHandler} loading={isLoading} />
 
       <section>
         <Search onLoadIngredients={filteredIngredientsHandler} />
