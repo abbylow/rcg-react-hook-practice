@@ -1,4 +1,4 @@
-import React, { useReducer, useCallback } from 'react';
+import React, { useReducer, useCallback, useMemo } from 'react';
 
 import IngredientForm from './IngredientForm';
 import IngredientList from './IngredientList';
@@ -67,13 +67,23 @@ const Ingredients = () => {
   }, []);
 
   // useCallback: cache the function so the function will not be changed / re-created
+  // the component that receives this function must be using React.memo, otherwise it will re-render no matter this function is re-created or not
   const filteredIngredientsHandler = useCallback(filteredIngredients => {
     dispatch({ type: 'SET', ingredients: filteredIngredients });
   }, []); //the only dependency is setUserIngredients and it is setState function so no need to list in dependency list
 
-  const cleanError = () => {
+  const cleanError = useCallback(() => {
     dispatchHttp({ type: 'CLEAR' });
-  }
+  }, []);
+
+  const ingredientList = useMemo(() => {
+    return (
+      <IngredientList
+        ingredients={userIngredients}
+        onRemoveItem={removeIngredientHandler}
+      />
+    )
+  }, [userIngredients, removeIngredientHandler]);
 
   return (
     <div className="App">
@@ -83,10 +93,7 @@ const Ingredients = () => {
 
       <section>
         <Search onLoadIngredients={filteredIngredientsHandler} />
-        <IngredientList
-          ingredients={userIngredients}
-          onRemoveItem={removeIngredientHandler}
-        />
+        {ingredientList}
       </section>
     </div>
   );
